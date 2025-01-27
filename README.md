@@ -102,7 +102,7 @@ You can use `ResoniteBridgeUtils.EncodeString` and `ResoniteBridgeUtils.DecodeSt
 
 #### Objects
 
-Because working with bytes directly is annoying, you could deserialize and serialize using Newtonsoft.Json's bson:
+You can serialize objects using Newtonsoft.Json's bson:
 
 ```c#
 ExampleObject exampleObj = ...;
