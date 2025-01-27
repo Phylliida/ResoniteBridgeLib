@@ -1,0 +1,3 @@
+[submodule "MemoryMappedFileIPC"]
+	path = MemoryMappedFileIPC
+	url = https://github.com/Phylliida/MemoryMappedFileIPC
