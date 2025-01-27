@@ -29,8 +29,7 @@ namespace ResoniteBridgeLib
             serializer.NullValueHandling = NullValueHandling.Ignore;
         }
 
-        /*
-        public static byte[] EncodeObject(object obj)
+        public static byte[] EncodeObjectBson(object obj)
         {
             using(MemoryStream ms = new MemoryStream())
             {
@@ -42,7 +41,7 @@ namespace ResoniteBridgeLib
             }
         }
 
-        public static T DecodeObject<T>(byte[] bytes)
+        public static T DecodeObjectBson<T>(byte[] bytes)
         {
             using (MemoryStream ms = new MemoryStream(bytes))
             {
@@ -53,7 +52,7 @@ namespace ResoniteBridgeLib
             }
         }
 
-        public static object DecodeObject(byte[] bytes, System.Type t)
+        public static object DecodeObjectBson(byte[] bytes, System.Type t)
         {
             using (MemoryStream ms = new MemoryStream(bytes))
             {
@@ -63,7 +62,6 @@ namespace ResoniteBridgeLib
                 }
             }
         }
-        */
 
 
 

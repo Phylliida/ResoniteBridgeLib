@@ -111,12 +111,12 @@ namespace ResoniteBridgeLib
 
         public LogDelegate DebugLog;
 
-        public ResoniteBridgeClient(string serverDirectory, LogDelegate DebugLog)
+        public ResoniteBridgeClient(string channelName, string serverDirectory, LogDelegate DebugLog)
         {
             this.DebugLog = DebugLog;
             stopToken = new CancellationTokenSource();
-            publisher = new IpcPublisher(NAMED_SOCKET_KEY, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
-            subscriber = new IpcSubscriber(NAMED_SOCKET_KEY, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
+            publisher = new IpcPublisher(channelName, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
+            subscriber = new IpcSubscriber(channelName, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
 
             // network monitoring thread
             sendingThread = new Thread(() =>

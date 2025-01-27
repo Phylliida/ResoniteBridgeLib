@@ -10,8 +10,6 @@ namespace ResoniteBridgeLib
 {
     public class ResoniteBridgeServer : IDisposable
     {
-        public const string NAMED_SOCKET_KEY = "ResoniteCustomBridge";
-
         public const int millisBetweenPing = ResoniteBridgeClient.millisBetweenPing;
 
         public IpcPublisher publisher;
@@ -129,13 +127,13 @@ namespace ResoniteBridgeLib
 
         LogDelegate DebugLog;
 
-        public ResoniteBridgeServer(string serverDirectory, LogDelegate DebugLog)
+        public ResoniteBridgeServer(string channelName, string serverDirectory, LogDelegate DebugLog)
         {
             this.DebugLog = DebugLog;
             DebugLog("Hii i'm the bridge server");
             stopToken = new CancellationTokenSource();
-            publisher = new IpcPublisher(NAMED_SOCKET_KEY, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
-            subscriber = new IpcSubscriber(NAMED_SOCKET_KEY, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
+            publisher = new IpcPublisher(channelName, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
+            subscriber = new IpcSubscriber(channelName, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
 
             subscriber.RecievedBytes += (bytes) =>
             {
