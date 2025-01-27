@@ -88,7 +88,13 @@ else
 }
 ```
 
+Remember to call
 
+```c#
+bridgeClient.Dispose();
+```
+
+when you are doing using it.
 
 ## Serialization
 
