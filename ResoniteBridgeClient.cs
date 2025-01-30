@@ -115,8 +115,8 @@ namespace ResoniteBridgeLib
         {
             this.DebugLog = DebugLog;
             stopToken = new CancellationTokenSource();
-            publisher = new IpcPublisher(channelName, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
-            subscriber = new IpcSubscriber(channelName, serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
+            publisher = new IpcPublisher(channelName + "server", serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
+            subscriber = new IpcSubscriber(channelName + "client", serverDirectory, millisBetweenPing, (msg) => DebugLog(msg));
 
             // network monitoring thread
             sendingThread = new Thread(() =>
@@ -137,8 +137,6 @@ namespace ResoniteBridgeLib
                         }
                         try
                         {
-                            // we use bson to decrease communication size
-                            // especially useful for arrays
                             byte[] encodedBytes = ResoniteBridgeUtils.EncodeObject(message);
                             publisher.Publish(encodedBytes);
                         }

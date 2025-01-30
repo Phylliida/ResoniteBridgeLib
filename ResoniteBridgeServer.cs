@@ -132,8 +132,8 @@ namespace ResoniteBridgeLib
             this.DebugLog = DebugLog;
             DebugLog("Hii i'm the bridge server");
             stopToken = new CancellationTokenSource();
-            publisher = new IpcPublisher(channelName, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
-            subscriber = new IpcSubscriber(channelName, serverDirectory, millisBetweenPing, msg => DebugLog(msg));
+            publisher = new IpcPublisher(channelName + "client", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
+            subscriber = new IpcSubscriber(channelName + "server", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
 
             subscriber.RecievedBytes += (bytes) =>
             {

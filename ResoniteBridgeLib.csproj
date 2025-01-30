@@ -3,11 +3,29 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
 	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	  <Title>Resonite Bridge Lib</Title>
+	  <Description>A connector that lets you communicate between Resonite mods and other applications, using MemoryMappedFileIPC </Description>
+	  <PackageProjectUrl>https://github.com/Phylliida/ResoniteBridgeLib</PackageProjectUrl>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
+	  <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
     <Target Name="PostPublish" AfterTargets="Publish">
 	    <Exec Command="xcopy &quot;$(PublishDir)\*.dll&quot; &quot;..\ExampleUnityProject\Assets\ResoniteUnityExporter\Plugins&quot; /E /I /Y" />
