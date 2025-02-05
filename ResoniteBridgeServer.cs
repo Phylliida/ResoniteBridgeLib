@@ -135,7 +135,7 @@ namespace ResoniteBridgeLib
             publisher = new IpcPublisher(channelName + "client", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
             subscriber = new IpcSubscriber(channelName + "server", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
 
-            subscriber.RecievedBytes += (bytes) =>
+            subscriber.RecievedBytes += (byte[][] bytes) =>
             {
                 DebugLog("Subscriber recieved these bytes " + bytes);
 
@@ -143,7 +143,8 @@ namespace ResoniteBridgeLib
                 {
                     DebugLog("Subscriber recieved " + bytes.Length + " bytes");
                     ResoniteBridgeMessage parsedMessage = (ResoniteBridgeMessage)ResoniteBridgeUtils.DecodeObject< ResoniteBridgeMessage>(
-                        bytes);
+                        bytes[0]);
+                    parsedMessage.data = bytes[1];
                     DebugLog("Recieved message " + parsedMessage.methodName + " with " + 
                         (parsedMessage.data == null ? 0 : parsedMessage.data.Length)
                         + " bytes");
@@ -176,8 +177,10 @@ namespace ResoniteBridgeLib
                         }
                         try
                         {
+                            byte[] messageData = response.data;
+                            response.data = new byte[0];
                             byte[] encodedBytes = ResoniteBridgeUtils.EncodeObject(response);
-                            publisher.Publish(encodedBytes);
+                            publisher.Publish(new byte[][] { encodedBytes, messageData });
                         }
                         catch (JsonSerializationException e)
                         {

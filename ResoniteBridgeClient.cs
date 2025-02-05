@@ -137,8 +137,11 @@ namespace ResoniteBridgeLib
                         }
                         try
                         {
+                            // avoid having bytes in memory twice
+                            byte[] messageData = message.data;
+                            message.data = new byte[0];
                             byte[] encodedBytes = ResoniteBridgeUtils.EncodeObject(message);
-                            publisher.Publish(encodedBytes);
+                            publisher.Publish(new byte[][] { encodedBytes, messageData });
                         }
                         catch (JsonSerializationException e)
                         {
@@ -158,12 +161,13 @@ namespace ResoniteBridgeLib
                 }
             });
             
-            subscriber.RecievedBytes += (bytes) =>
+            subscriber.RecievedBytes += (byte[][] bytes) =>
             {
                 try
                 {
                     ResoniteBridgeMessage parsedResult = (ResoniteBridgeMessage)ResoniteBridgeUtils.DecodeObject< ResoniteBridgeMessage>(
-                        bytes);
+                        bytes[0]);
+                    parsedResult.data = bytes[1];
                     outputMessages[parsedResult.uuid] = parsedResult;
                     outputMessageEvents[parsedResult.uuid].Set();
                 }
