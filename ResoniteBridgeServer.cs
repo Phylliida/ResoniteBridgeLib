@@ -198,6 +198,10 @@ namespace ResoniteBridgeLib
                 {
 
                 }
+                catch (Exception ex)
+                {
+                    DebugLog("Got exception in server sending thread for channel " + channelName + " with exception " + ex.GetType() + " " + ex.Message + " " + ex.StackTrace);
+                }
             });
             
             sendingThread.Start();
@@ -205,15 +209,35 @@ namespace ResoniteBridgeLib
 
         public void Dispose()
         {
-            if (!stopToken.IsCancellationRequested)
+            if (stopToken != null && !stopToken.IsCancellationRequested)
             {
                 stopToken.Cancel();
             }
-            sendingThread.Join();
-            stopToken.Dispose();
-            publisher.Dispose();
-            subscriber.Dispose();
-            outputMessages.Dispose();
+            if (sendingThread != null)
+            {
+                sendingThread.Join();
+                sendingThread = null;
+            }
+            if (publisher != null)
+            {
+                publisher.Dispose();
+                publisher = null;
+            }
+            if (subscriber != null)
+            {
+                subscriber.Dispose();
+                subscriber = null;
+            }
+            if (stopToken != null)
+            {
+                stopToken.Dispose();
+                stopToken = null;
+            }
+            if (outputMessages != null)
+            {
+                outputMessages.Dispose();
+                outputMessages = null;
+            }
         }
     }
 }
