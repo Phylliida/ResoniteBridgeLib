@@ -168,6 +168,12 @@ namespace ResoniteBridgeLib
                 return null;
             }
             object result;
+
+            if (type.IsEnum)
+            {
+                return Enum.Parse(type, DecodeString(bytes, ref offset));
+            }
+
             switch (type.ToString())
             {
                 case "System.Single":
@@ -293,6 +299,13 @@ namespace ResoniteBridgeLib
             }
             // not null, actually parse the value
             Type objType = obj.GetType();
+            
+            if (objType.IsEnum)
+            {
+                EncodeString(Enum.GetName(objType, obj), outBytes, ref offset, writeBytes);
+                return;
+            }
+
             switch (obj.GetType().ToString())
             {
                 case "System.Boolean":
@@ -432,6 +445,10 @@ namespace ResoniteBridgeLib
             if (type.IsClass)
             {
                 return false;
+            }
+            if (type.IsEnum)
+            {
+                return true;
             }
             return primitiveTypes.Contains(type) ||
                 GetTypeFields(type).All(t =>
