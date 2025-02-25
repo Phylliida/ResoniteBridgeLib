@@ -1,10 +1,8 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using MemoryMappedFileIPC;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace ResoniteBridgeLib
 {
@@ -65,7 +63,7 @@ namespace ResoniteBridgeLib
             }
             catch (Exception e)
             {
-                responseBytes = ResoniteBridgeUtils.EncodeString(e.Message + " " + e.StackTrace);
+                responseBytes = SerializationUtils.EncodeString(e.Message + " " + e.StackTrace);
                 isError = true;
             }
         }
@@ -135,20 +133,11 @@ namespace ResoniteBridgeLib
                         {
                             break;
                         }
-                        try
-                        {
-                            // avoid having bytes in memory twice
-                            byte[] messageData = message.data;
-                            message.data = new byte[0];
-                            byte[] encodedBytes = ResoniteBridgeUtils.EncodeObject(message);
-                            publisher.Publish(new byte[][] { encodedBytes, messageData });
-                        }
-                        catch (JsonSerializationException e)
-                        {
-                            DebugLog("Failed to serialize message, ignoring");
-                            DebugLog("ERROR: " + e.Message);
-                            DebugLog("Message:" + message);
-                        }
+                        // avoid having bytes in memory twice
+                        byte[] messageData = message.data;
+                        message.data = new byte[0];
+                        byte[] encodedBytes = SerializationUtils.EncodeObject(message);
+                        publisher.Publish(new byte[][] { encodedBytes, messageData });
                     }
                 }
                 catch(TaskCanceledException)
@@ -163,20 +152,11 @@ namespace ResoniteBridgeLib
             
             subscriber.RecievedBytes += (byte[][] bytes) =>
             {
-                try
-                {
-                    ResoniteBridgeMessage parsedResult = (ResoniteBridgeMessage)ResoniteBridgeUtils.DecodeObject< ResoniteBridgeMessage>(
-                        bytes[0]);
-                    parsedResult.data = bytes[1];
-                    outputMessages[parsedResult.uuid] = parsedResult;
-                    outputMessageEvents[parsedResult.uuid].Set();
-                }
-                catch (JsonSerializationException e)
-                {
-                    DebugLog("Failed to deserialize result, ignoring");
-                    DebugLog("ERROR: " + e.Message);
-                    DebugLog("Message: " + bytes);
-                }
+                ResoniteBridgeMessage parsedResult = (ResoniteBridgeMessage)SerializationUtils.DecodeObject< ResoniteBridgeMessage>(
+                    bytes[0]);
+                parsedResult.data = bytes[1];
+                outputMessages[parsedResult.uuid] = parsedResult;
+                outputMessageEvents[parsedResult.uuid].Set();
             };
             
             sendingThread.Start();
