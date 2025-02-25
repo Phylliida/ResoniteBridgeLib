@@ -100,26 +100,15 @@ when you are doing using it.
 
 This works using `byte[]`, but in practice it's easier to work with objects or strings.
 
-To support this I have a few helper methods in `ResoniteBridgeUtils`.
+To support this I have a few helper methods in `SerializationUtils`.
 
 ### Strings
 
-You can use `ResoniteBridgeUtils.EncodeString` and `ResoniteBridgeUtils.DecodeString`.
+You can use `SerializationUtils.EncodeString` and `SerializationUtils.DecodeString`.
 
 #### Objects
 
-You can serialize objects using Newtonsoft.Json's bson:
-
-```c#
-ExampleObject exampleObj = ...;
-byte[] inputBytes = ResoniteBridgeUtils.EncodeObjectBson(exampleObj);
-```
-
-Then to decode:
-
-```c#
-ExampleObject inputObject = ResoniteBridgeUtils.DecodeObjectBson<ExampleObject>(inputBytes);
-```
+You can serialize objects using Newtonsoft.Json's bson.
 
 However, I find if you have large arrays of primitive types or structs this can be slow.
 
@@ -154,13 +143,13 @@ Float3_Example example = new Float3_Example() {
 	y=1,
 	z=2
 };
-byte[] inputBytes = ResoniteBridgeUtils.EncodeObject(exampleObj);
+byte[] inputBytes = SerializationUtils.EncodeObject(exampleObj);
 ```
 
 Then to decode:
 
 ```c#
-Float3_Example inputObject = ResoniteBridgeUtils.DecodeObject<Float3_Example>(inputBytes);
+Float3_Example inputObject = SerializationUtils.DecodeObject<Float3_Example>(inputBytes);
 ```
 
 ## Modifying Resonite
