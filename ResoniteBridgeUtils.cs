@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using MemoryMappedFileIPC;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
 
@@ -286,7 +287,7 @@ namespace ResoniteBridgeLib
             return MethodBase.GetCurrentMethod().DeclaringType;
         }
 
-        public static ResoniteBridgeServer.LogDelegate DebugLog = x => Console.WriteLine(x);
+        public static IpcUtils.DebugLogType DebugLog = x => Console.WriteLine(x);
 
         static void EncodeObject(object obj, byte[] outBytes, ref int offset, bool writeBytes)
         {

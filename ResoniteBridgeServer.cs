@@ -17,8 +17,6 @@ namespace ResoniteBridgeLib
 
         CancellationTokenSource stopToken;
 
-        public delegate void LogDelegate(string message);
-
         private ConcurrentDictionary<string, MessageProcessor> processors = new ConcurrentDictionary<string, MessageProcessor>();
 
         public bool TryGetProcessor(string methodName, out MessageProcessor processor)
@@ -125,9 +123,9 @@ namespace ResoniteBridgeLib
             return Math.Min(subscriber.NumActiveConnections(), publisher.NumActiveConnections());
         }
 
-        LogDelegate DebugLog;
+        IpcUtils.DebugLogType DebugLog;
 
-        public ResoniteBridgeServer(string channelName, string serverDirectory, LogDelegate DebugLog)
+        public ResoniteBridgeServer(string channelName, string serverDirectory, IpcUtils.DebugLogType DebugLog)
         {
             this.DebugLog = DebugLog;
             DebugLog("Hii i'm the bridge server");
