@@ -48,6 +48,7 @@ namespace ResoniteBridgeLib
         public void SendMessageSync(string name, byte[] data, int timeout, out byte[] responseBytes, out bool isError)
         {
             int messageUuid = Interlocked.Increment(ref curMessageId);
+            DebugLog("Processing message with uuid: " + messageUuid);
             ResoniteBridgeMessage message = new ResoniteBridgeMessage()
             {
                 data = data,
@@ -71,6 +72,7 @@ namespace ResoniteBridgeLib
         {
             ManualResetEvent messageEvent = new ManualResetEvent(false);
             outputMessageEvents[message.uuid] = messageEvent;
+            DebugLog("Processing message with uuid: " + message.uuid);
             inputMessages.Enqueue(message);
             int waitedHandle = WaitHandle.WaitAny(new WaitHandle[]
             {
@@ -78,25 +80,30 @@ namespace ResoniteBridgeLib
                 publisher.disconnectEvent,
                 messageEvent
             }, timeout);
+            DebugLog("Done processing message with uuid: " + message.uuid);
 
             outputMessageEvents.TryRemove(message.uuid, out _);
             messageEvent.Dispose();
             
             if (waitedHandle == 0)
             {
+                DebugLog("canceled message with uuid: " + message.uuid);
                 throw new CanceledException();
             }
             else if (waitedHandle == 1)
             {
+                DebugLog("disconnected message with uuid: " + message.uuid);
                 throw new DisconnectException();
             }
             else if (waitedHandle == WaitHandle.WaitTimeout)
             {
+                DebugLog("timeout message with uuid: " + message.uuid);
                 throw new TimeoutException();
             }
             else
             {
-                if(outputMessages.TryRemove(message.uuid, out ResoniteBridgeMessage response))
+                DebugLog("finsihed message with uuid: " + message.uuid);
+                if (outputMessages.TryRemove(message.uuid, out ResoniteBridgeMessage response))
                 {
                     return response;
                 }
@@ -156,7 +163,21 @@ namespace ResoniteBridgeLib
                     bytes[0]);
                 parsedResult.data = bytes[1];
                 outputMessages[parsedResult.uuid] = parsedResult;
-                outputMessageEvents[parsedResult.uuid].Set();
+                if (outputMessageEvents.TryGetValue(parsedResult.uuid, out ManualResetEvent evt))
+                {
+                    try
+                    {
+                        evt.Set();
+                    }
+                    catch (ObjectDisposedException e)
+                    {
+                        // this could happen in edge case, ignore it
+                    }
+                }
+                else
+                {
+                    DebugLog("Event cleaned up, probabaly message failed somehow");
+                }
             };
             
             sendingThread.Start();
