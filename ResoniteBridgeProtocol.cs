@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Reflection;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace ResoniteBridgeLib
 {
@@ -15,6 +16,7 @@ namespace ResoniteBridgeLib
         Error = 2,
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct ResoniteBridgeMessage
     {
         public string methodName;
