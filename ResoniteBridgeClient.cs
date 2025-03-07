@@ -17,15 +17,15 @@ namespace ResoniteBridgeLib
         public IpcPublisher publisher;
         public IpcSubscriber subscriber;
 
-        CancellationTokenSource stopToken;
+        readonly CancellationTokenSource stopToken;
 
         public delegate void LogDelegate(string message);
 
-        private ConcurrentQueueWithNotification<ResoniteBridgeMessage> inputMessages = new ConcurrentQueueWithNotification<ResoniteBridgeMessage>();
-        private ConcurrentDictionary<int, ManualResetEvent> outputMessageEvents = new ConcurrentDictionary<int, ManualResetEvent>();
-        private ConcurrentDictionary<int, ResoniteBridgeMessage> outputMessages = new ConcurrentDictionary<int, ResoniteBridgeMessage>();
+        private readonly ConcurrentQueueWithNotification<ResoniteBridgeMessage> inputMessages = new ConcurrentQueueWithNotification<ResoniteBridgeMessage>();
+        private readonly ConcurrentDictionary<int, ManualResetEvent> outputMessageEvents = new ConcurrentDictionary<int, ManualResetEvent>();
+        private readonly ConcurrentDictionary<int, ResoniteBridgeMessage> outputMessages = new ConcurrentDictionary<int, ResoniteBridgeMessage>();
 
-        private Thread sendingThread;
+        readonly private Thread sendingThread;
 
 
         public int NumActiveConnections()
@@ -36,16 +36,12 @@ namespace ResoniteBridgeLib
 
         public delegate void MessageResponseHandler(byte[] responseBytes, bool isError);
 
-        public void SendMessageAsync(string name, byte[] data, int timeout, MessageResponseHandler handler)
+        public struct MessageResponse
         {
-            new Thread(() =>
-            {
-                SendMessageSync(name, data, timeout, out byte[] responseBytes, out bool isError);
-                handler(responseBytes, isError);
-            }).Start(); 
+            public byte[] messageBytes;
+            public bool isError;
         }
-
-        public void SendMessageSync(string name, byte[] data, int timeout, out byte[] responseBytes, out bool isError)
+        public async Task<MessageResponse> SendMessage(string name, byte[] data, int timeout)
         {
             int messageUuid = Interlocked.Increment(ref curMessageId);
             DebugLog("Processing message with uuid: " + messageUuid);
@@ -58,23 +54,29 @@ namespace ResoniteBridgeLib
             };
             try
             {
-                ResoniteBridgeMessage responseMessage = SendMessageSyncHelper(message, timeout);
-                responseBytes = responseMessage.data;
-                isError = responseMessage.messageType == ResoniteBridgeValueType.Error;
+                ResoniteBridgeMessage responseMessage = await SendMessageHelper(message, timeout);
+                return new MessageResponse
+                {
+                    isError = responseMessage.messageType == ResoniteBridgeValueType.Error,
+                    messageBytes = responseMessage.data
+                };
             }
             catch (Exception e)
             {
-                responseBytes = SerializationUtils.EncodeString(e.Message + " " + e.StackTrace);
-                isError = true;
+                return new MessageResponse()
+                {
+                    isError = true,
+                    messageBytes = SerializationUtils.EncodeString(e.Message + " " + e.StackTrace)
+                };
             }
         }
-        private ResoniteBridgeMessage SendMessageSyncHelper(ResoniteBridgeMessage message, int timeout=-1)
+        private async Task<ResoniteBridgeMessage> SendMessageHelper(ResoniteBridgeMessage message, int timeout=-1)
         {
             ManualResetEvent messageEvent = new ManualResetEvent(false);
             outputMessageEvents[message.uuid] = messageEvent;
             DebugLog("Processing message with uuid: " + message.uuid);
             inputMessages.Enqueue(message);
-            int waitedHandle = WaitHandle.WaitAny(new WaitHandle[]
+            int waitedHandle = await IpcUtils.WaitAny(new WaitHandle[]
             {
                 stopToken.Token.WaitHandle,
                 publisher.disconnectEvent,
@@ -169,7 +171,7 @@ namespace ResoniteBridgeLib
                     {
                         evt.Set();
                     }
-                    catch (ObjectDisposedException e)
+                    catch (ObjectDisposedException)
                     {
                         // this could happen in edge case, ignore it
                     }

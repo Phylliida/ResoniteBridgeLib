@@ -15,7 +15,7 @@ namespace ResoniteBridgeLib
 
         CancellationTokenSource stopToken;
 
-        private ConcurrentDictionary<string, MessageProcessor> processors = new ConcurrentDictionary<string, MessageProcessor>();
+        private readonly ConcurrentDictionary<string, MessageProcessor> processors = new ConcurrentDictionary<string, MessageProcessor>();
 
         public bool TryGetProcessor(string methodName, out MessageProcessor processor)
         {
@@ -36,71 +36,101 @@ namespace ResoniteBridgeLib
 
         private Thread sendingThread;
         
-        public delegate byte[] MessageProcessor(byte[] input);
+        public delegate Task<byte[]> MessageProcessor(byte[] input);
 
-        private void ProcessMessageAsync(ResoniteBridgeMessage message, int timeout = -1)
-        {
-            new Thread(() =>
-            {
-                ProcessMessageSync(message, timeout);
-            }).Start();
-        }
-
-        private void ProcessMessageSync(ResoniteBridgeMessage message, int timeout = -1)
+        private async Task ProcessMessage(ResoniteBridgeMessage message, int timeout = -1)
         {
             try
             {
-                MessageProcessor processor;
-                if (!TryGetProcessor(message.methodName, out processor))
+                if (!TryGetProcessor(message.methodName, out MessageProcessor processor))
                 {
                     DebugLog("Unknown processor " + message.methodName);
                     throw new UnknownProcessorException(message.methodName);
                 }
 
                 DebugLog("Running processor " + message.methodName);
-                Task<byte[]> processingTask = Task.Run(() => processor(message.data), stopToken.Token);
-
-                // Create a task for disconnect event
-                Task disconnectTask = Task.Run(() => publisher.disconnectEvent.WaitOne(), stopToken.Token);
-
-                Task timeoutTask = Task.Delay(timeout, stopToken.Token);
-
-                // Wait for the first task to complete
-                Task completedTask = Task.WhenAny(
-                    processingTask,
-                    disconnectTask,
-                    timeoutTask
-                );
-                DebugLog("Done running processor " + message.methodName);
-
-                if (stopToken.IsCancellationRequested)
+                using (CancellationTokenSource tmpStopToken = new CancellationTokenSource())
                 {
-                    DebugLog("Done running processor " + message.methodName + " canceled");
-                    throw new CanceledException();
-                }
-                else if (completedTask == disconnectTask)
-                {
-                    DebugLog("Done running processor " + message.methodName + " disconnected");
-                    throw new DisconnectException();
-                }
-                else if (completedTask == timeoutTask)
-                {
-                    DebugLog("Done running processor " + message.methodName + " timed out");
-                    throw new TimeoutException();
-                }
-                else
-                {
-                    DebugLog("Done running processor " + message.methodName + " success");
-                    byte[] responseData = processingTask.GetAwaiter().GetResult();
-                    ResoniteBridgeMessage response = new ResoniteBridgeMessage()
+                    using (CancellationTokenSource linkedToken = CancellationTokenSource.CreateLinkedTokenSource(stopToken.Token, tmpStopToken.Token))
                     {
-                        data = responseData,
-                        messageType = ResoniteBridgeValueType.Bytes,
-                        methodName = message.methodName,
-                        uuid = message.uuid
-                    };
-                    outputMessages.Enqueue(response);
+                        Task<byte[]> processingTask = Task.Run(async () => await processor(message.data), linkedToken.Token);
+
+                        // Create a task for disconnect event
+                        // important to call this wrapper because just () => WaitOne will consume the thread forever even if cancel token is canceled
+                        Task disconnectTask = IpcUtils.WaitOneAsync(publisher.disconnectEvent, linkedToken.Token);
+
+                        Task timeoutTask = Task.Delay(timeout, linkedToken.Token);
+
+                        // Wait for the first task to complete
+                        Task completedTask = await Task.WhenAny(
+                            processingTask,
+                            disconnectTask,
+                            timeoutTask
+                        );
+
+                        byte[] responseData = null;
+                        if (completedTask == processingTask)
+                        {
+                            responseData = await processingTask;
+                        }
+
+                        // clean up the other tasks
+                        tmpStopToken.Cancel();
+                        try
+                        {
+                            await processingTask;
+                        }
+                        catch (TaskCanceledException ex)
+                        {
+                        }
+                        try
+                        {
+                            await disconnectTask;
+                        }
+                        catch (TaskCanceledException ex)
+                        {
+                        }
+
+                        try
+                        {
+                            await timeoutTask;
+                        }
+                        catch (TaskCanceledException ex)
+                        {
+                        }
+
+                        DebugLog("Done running processor " + message.methodName);
+                        if (stopToken.IsCancellationRequested)
+                        {
+                            DebugLog("Done running processor " + message.methodName + " canceled");
+                            throw new CanceledException();
+                        }
+                        else if (completedTask == disconnectTask)
+                        {
+                            DebugLog("Done running processor " + message.methodName + " disconnected");
+                            throw new DisconnectException();
+                        }
+                        else if (completedTask == timeoutTask)
+                        {
+                            DebugLog("Done running processor " + message.methodName + " timed out");
+                            throw new TimeoutException();
+                        }
+                        else
+                        {
+                            DebugLog("Done running processor " + message.methodName + " success");
+                            ResoniteBridgeMessage response = new ResoniteBridgeMessage()
+                            {
+                                data = responseData,
+                                messageType = ResoniteBridgeValueType.Bytes,
+                                methodName = message.methodName,
+                                uuid = message.uuid
+                            };
+                            outputMessages.Enqueue(response);
+                        }
+                    }
+
                 }
+
             }
             catch (Exception ex)
             {
@@ -121,7 +151,7 @@ namespace ResoniteBridgeLib
             return Math.Min(subscriber.NumActiveConnections(), publisher.NumActiveConnections());
         }
 
-        IpcUtils.DebugLogType DebugLog;
+        readonly IpcUtils.DebugLogType DebugLog;
 
         public ResoniteBridgeServer(string channelName, string serverDirectory, IpcUtils.DebugLogType DebugLog)
         {
@@ -131,7 +161,7 @@ namespace ResoniteBridgeLib
             publisher = new IpcPublisher(channelName + "client", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
             subscriber = new IpcSubscriber(channelName + "server", serverDirectory, millisBetweenPing, msg => DebugLog(msg));
 
-            subscriber.RecievedBytes += (byte[][] bytes) =>
+            subscriber.RecievedBytes += async (byte[][] bytes) =>
             {
                 DebugLog("Subscriber recieved these bytes " + bytes);
 
@@ -142,7 +172,8 @@ namespace ResoniteBridgeLib
                 DebugLog("Recieved message " + parsedMessage.methodName + " with " + 
                     (parsedMessage.data == null ? 0 : parsedMessage.data.Length)
                     + " bytes");
-                ProcessMessageAsync(parsedMessage);
+                await ProcessMessage(parsedMessage);
+                DebugLog("Subscriber done " + bytes);
             };
             
             // network monitoring thread
